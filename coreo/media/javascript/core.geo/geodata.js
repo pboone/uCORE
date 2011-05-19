@@ -87,6 +87,16 @@ if (!window.core.geo)
 		hasChildren: function() {},
 
 		/**
+		 * Function: setParent
+		 * 
+		 * Changes the parent GeoData of this instance.
+		 * 
+		 * Parameters:
+		 *   parent - <GeoData>.
+		 */
+		setParent: function(parent) {},
+
+		/**
 		 * Function: getParent
 		 * 
 		 * Retrieves the parent <GeoData> instance.

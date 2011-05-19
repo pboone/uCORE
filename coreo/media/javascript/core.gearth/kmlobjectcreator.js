@@ -506,6 +506,7 @@ if (!window.core.gearth)
 			var styleUrl, localStyleUrl, absoluteUrl, timer;
 			var cb = callback;
 			var waiting = 0;
+			var _this = this;
 			
 			// TODO: Work children off of a queue, instead of in "parallel"
 			/*
@@ -540,38 +541,45 @@ if (!window.core.gearth)
 							// load the style document
 							childGeoData.getEnclosingKmlUrl($.proxy(function(url) {
 								absoluteUrl = new URI(url).resolve(new URI(childKmlObject.styleUrl)).toString();
-								this.kmlJsonProxyService.getKmlJson(absoluteUrl, $.proxy(function(kmlJson) {
-									this.createFromKmlJson(kmlJson, $.proxy(function(kmlObject) {
-										if (kmlObject && kmlObject.getElementsByType) {
-											var styleObjects = kmlObject.getElementsByType("KmlStyle");
-											for (var i = 0; i < styleObjects.getLength(); i++) {
-												var originalStyle = styleObjects.item(i);
-												var styleWithId = this.ge.createStyle(localStyleUrl);
-												var substyle = originalStyle.getIconStyle();
-												if (substyle)
-													styleWithId.setIconStyle(substyle);
-												substyle = originalStyle.getLabelStyle();
-												if (substyle)
-													styleWithId.setLabelStyle(substyle);
-												substyle = originalStyle.getLineStyle();
-												if (substyle)
-													styleWithId.setLineStyle(substyle);
-												substyle = originalStyle.getListStyle();
-												if (substyle)
-													styleWithId.setListStyle(substyle);
-												substyle = originalStyle.getPolyStyle();
-												if (substyle)
-													styleWithId.setPolyStyle(substyle);
-												substyle = originalStyle.getBalloonStyle();
-												if (substyle)
-													styleWithId.setBalloonStyle(substyle);
-												kmlContainer.getFeatures().appendChild(styleWithId);
-											}
-										}
-										childKmlObject.setStyleUrl(localStyleUrl);
-										appendChild(childKmlObject);
-									}, this));
-								}, this));
+								var getKmlJsonCb = {
+									"success": function(kmlJson) {
+											_this.createFromKmlJson(kmlJson, function(kmlObject) {
+												if (kmlObject && kmlObject.getElementsByType) {
+													var styleObjects = kmlObject.getElementsByType("KmlStyle");
+													for (var i = 0; i < styleObjects.getLength(); i++) {
+														var originalStyle = styleObjects.item(i);
+														var styleWithId = _this.ge.createStyle(localStyleUrl);
+														var substyle = originalStyle.getIconStyle();
+														if (substyle)
+															styleWithId.setIconStyle(substyle);
+														substyle = originalStyle.getLabelStyle();
+														if (substyle)
+															styleWithId.setLabelStyle(substyle);
+														substyle = originalStyle.getLineStyle();
+														if (substyle)
+															styleWithId.setLineStyle(substyle);
+														substyle = originalStyle.getListStyle();
+														if (substyle)
+															styleWithId.setListStyle(substyle);
+														substyle = originalStyle.getPolyStyle();
+														if (substyle)
+															styleWithId.setPolyStyle(substyle);
+														substyle = originalStyle.getBalloonStyle();
+														if (substyle)
+															styleWithId.setBalloonStyle(substyle);
+														kmlContainer.getFeatures().appendChild(styleWithId);
+													}
+												}
+												childKmlObject.setStyleUrl(localStyleUrl);
+												appendChild(childKmlObject);
+											});
+										},
+									"error": function(error) {
+										console.log("ERROR retrieving KML JSON: " + error);
+										appendChild(null);
+									}
+								};
+								this.kmlJsonProxyService.getKmlJson(absoluteUrl, getKmlJsonCb);
 							}, this));
 						}
 						else {
@@ -599,6 +607,9 @@ if (!window.core.gearth)
 					cb.call(cb, kmlContainer);
 					window.clearInterval(timer);
 				}
+				else {
+					console.log(waiting);
+				}
 			};
 			var waitForKmlObjects = $.proxy(function() {
 				// All children have been iterated. Wait for all to be 
@@ -608,7 +619,10 @@ if (!window.core.gearth)
 				}
 				timer = window.setInterval(checkFinished, 200);
 			}, this);
-			geodata.iterateChildren(handleGeoDataChild, waitForKmlObjects);
+			geodata.iterateChildren(handleGeoDataChild, waitForKmlObjects, function(error) {
+				console.log("Error: " + error);
+				waiting--;
+			});
 			/*
 	
 			var cb = callback;
@@ -699,10 +713,10 @@ if (!window.core.gearth)
 		
 		_createChildrenFromKmlJson: function(kmlContainer, callback) {
 			var cb = callback;
-			if (kmlContainer && kmlContainer.children) {
+			if (kmlContainer && kmlContainer.children && kmlContainer.children.length > 0) {
 				var totalToAppend = kmlContainer.children.length;
 				var appended = 0;
-				for (var i = 0; kmlContainer.children && i < kmlContainer.children.length; i++) {
+				for (var i = 0; i < kmlContainer.children.length; i++) {
 					var childKmlJson = kmlContainer.children[i];
 					this.createFromKmlJson(childKmlJson, $.proxy(function(childKmlObject) {
 						kmlContainer.getFeatures().appendChild(childKmlObject);
@@ -712,6 +726,9 @@ if (!window.core.gearth)
 						}
 					}, this));
 				}
+			}
+			else {
+				cb.call(cb, kmlContainer);
 			}
 		},
 
@@ -751,6 +768,9 @@ if (!window.core.gearth)
 					console.log("Unhandled KML object: " + kmlJson.type);
 				}
 			}
+			else {
+				cb.call(cb, null);
+			}
 		},
 	
 		/**
@@ -765,45 +785,54 @@ if (!window.core.gearth)
 		createFromGeoData: function(geodata, callback) {
 			var geoDataId = geodata.id;
 			var onComplete = callback;
-			geodata.getKmlJson($.proxy(function(kmlJson) {
-				var kmlObject = null;
-				if (kmlJson && kmlJson.type) {
-					switch (kmlJson.type) {
-					case "Placemark":
-						kmlObject = this.createKmlPlacemark(kmlJson, geoDataId);
-						onComplete.call(onComplete, kmlObject);
-						break;
-					case "Document":
-						kmlObject = this.createKmlDocument(kmlJson, geoDataId);
-						this._createChildren(geodata, kmlObject, function(kmlDocument) {
-							onComplete.call(onComplete, kmlDocument);
-						});
-						break;
-					case "NetworkLink":
-						// we don't want the GE plugin to be managing 
-						// network link updates, so make this a Folder 
-						// object instead of a NetworkLink object
-						kmlObject = this.createKmlFolder(kmlJson, geoDataId);
-						this._createChildren(geodata, kmlObject, function(kmlFolder) {
-							onComplete.call(onComplete, kmlFolder);
-						});
-						break;
-					case "Folder":
-						kmlObject = this.createKmlFolder(kmlJson, geoDataId);
-						this._createChildren(geodata, kmlObject, function(kmlFolder) {
-							onComplete.call(onComplete, kmlFolder);
-						});
-						break;
-					case "ScreenOverlay":
-						kmlObject = this.createKmlScreenOverlay(kmlJson, geoDataId);
-						onComplete.call(onComplete, kmlObject);
-						break;
-					default:
-						console.log("Unhandled KML object: " + kmlJson.type);
+			var _this = this;
+			geodata.getKmlJson(function(kmlJson) {
+						var kmlObject = null;
+						if (kmlJson && kmlJson.type) {
+							switch (kmlJson.type) {
+							case "Placemark":
+								kmlObject = _this.createKmlPlacemark(kmlJson, geoDataId);
+								onComplete.call(onComplete, kmlObject);
+								break;
+							case "Document":
+								kmlObject = _this.createKmlDocument(kmlJson, geoDataId);
+								_this._createChildren(geodata, kmlObject, function(kmlDocument) {
+									onComplete.call(onComplete, kmlDocument);
+								});
+								break;
+							case "NetworkLink":
+								// we don't want the GE plugin to be managing 
+								// network link updates, so make this a Folder 
+								// object instead of a NetworkLink object
+								kmlObject = _this.createKmlFolder(kmlJson, geoDataId);
+								_this._createChildren(geodata, kmlObject, function(kmlFolder) {
+									onComplete.call(onComplete, kmlFolder);
+								});
+								break;
+							case "Folder":
+								kmlObject = _this.createKmlFolder(kmlJson, geoDataId);
+								_this._createChildren(geodata, kmlObject, function(kmlFolder) {
+									onComplete.call(onComplete, kmlFolder);
+								});
+								break;
+							case "ScreenOverlay":
+								kmlObject = _this.createKmlScreenOverlay(kmlJson, geoDataId);
+								onComplete.call(onComplete, kmlObject);
+								break;
+							default:
+								console.log("Unhandled KML object: " + kmlJson.type);
+								onComplete.call(onComplete, null);
+							}
+						}
+						else {
+							onComplete.call(onComplete, null);
+						}
+					},
+				function(error) {
+						console.log("ERROR retrieving KML JSON: " + error);
 						onComplete.call(onComplete, null);
 					}
-				}
-			}, this));
+			);
 		}
 	};
 	ns.KmlObjectCreator = KmlObjectCreator;

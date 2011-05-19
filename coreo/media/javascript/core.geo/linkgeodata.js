@@ -13,6 +13,7 @@
  *   - core.geo.GeoData
  *   - core.geo.KmlFeatureType
  *   - core.util.KmlUtils
+ *   - core.geo.GeoDataStore
  */
 
 if (!window.core)
@@ -21,6 +22,10 @@ if (!window.core.geo)
 	window.core.geo = {};
 
 (function($, ns) {
+	var GeoDataStore = core.geo.GeoDataStore;
+	if (!GeoDataStore)
+		throw "Dependency not found: core.geo.GeoDataStore";
+
 	/**
 	 * Constructor: LinkGeoData
 	 * 
@@ -33,7 +38,7 @@ if (!window.core.geo)
 	 *   linkContent - <GeoData>. Content from the link's URL.
 	 */
 	var LinkGeoData = function(geoDataId, link, parent, geoDataRetriever) {
-		var _super, lazyLoadLinkContent, linkContent;
+		var _super, lazyLoadLinkContent, linkContent, _this;
 		_super = new core.geo.GeoData(geoDataId);
 		lazyLoadLinkContent = function() {
 			var deferred = $.Deferred();
@@ -47,6 +52,8 @@ if (!window.core.geo)
 					geoDataRetriever.fetch(link.fields.url)
 						.then(function(geodata) {
 								linkContent = geodata;
+								linkContent.setParent(_this);
+								linkContent = GeoDataStore.persist(linkContent);
 								deferred.resolve(linkContent);
 							},
 							function(error) {
@@ -59,7 +66,7 @@ if (!window.core.geo)
 			}
 			return deferred.promise();
 		};
-		return $.extend(_super, {
+		_this = $.extend(_super, {
 
 			/**
 			 * Function: getCoreLink
@@ -117,6 +124,17 @@ if (!window.core.geo)
 				return true;
 			},
 
+			/**
+			 * Function: setParent
+			 * 
+			 * See Also:
+			 *   <GeoData.setParent>
+			 */
+			setParent: function(newParent) {
+				console.log("setParent(" + newParent + ")");
+				parent = newParent;
+			},
+			
 			/**
 			 * Function: getParent
 			 * 
@@ -223,6 +241,7 @@ if (!window.core.geo)
 				throw "Not implemented";
 			},
 		});
+		return _this;
 	};
 	ns.LinkGeoData = LinkGeoData;
 })(jQuery, window.core.geo);

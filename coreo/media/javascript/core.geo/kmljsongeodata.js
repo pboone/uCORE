@@ -187,6 +187,17 @@ if (!window.core.geo)
 		},
 
 		/**
+		 * Function: setParent
+		 * 
+		 * See Also:
+		 *   <GeoData.setParent>
+		 */
+		setParent: function(newParent) {
+			console.log("setParent(" + newParent + ")");
+			this.parentGeoData = newParent;
+		},
+
+		/**
 		 * Function: getParent
 		 * 
 		 * Retrieves the parent <GeoData> instance.

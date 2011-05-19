@@ -290,6 +290,9 @@ if (!window.core.gearth)
 				balloon.setCloseButtonEnabled(true);
 				this.ge.setBalloon(balloon);
 			}
+			else {
+				console.log("kmlObject doesn't exist");
+			}
 		},
 
 		/**

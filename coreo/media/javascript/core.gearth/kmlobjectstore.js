@@ -73,26 +73,48 @@ if (!window.core.gearth)
 		 *   geoData - <GeoData>. Linked GeoData object.
 		 */
 		getKmlObject: function(geoData) {
-			var kmlObject = null;
-			if (geoData && geoData.id) {
-				var id = geoData.id;
-				if (id in this.datastore) {
+			console.log("getKmlObject(" + geoData.getName() + ")");
+			console.log(geoData);
+			var kmlObject = null, id, parentGeoData, parentKmlObject, 
+				kmlObjectType, childKmlObjectList, i, childKmlObject, 
+				childGeoDataId;
+			kmlObject = null;
+			if (geoData) {
+				id = geoData.id;
+				if (id && id in this.datastore) {
 					kmlObject = this.datastore[id];
 				}
 				else {
+					console.log(id + " doesn't exist in store");
 					// parent geoData might be in the store. if so, find it, 
 					// then search its children.
-					var parentGeoData = geoData.getParent();
+					parentGeoData = geoData.getParent();
 					if (parentGeoData) {
-						var parentKmlObject = this.getKmlObject(parentGeoData);
+						parentKmlObject = this.getKmlObject(parentGeoData);
 						if (parentKmlObject) {
-							var kmlObjectType = this.getKmlObjectType(geoData);
+							console.log("Found parent KmlObject in store " + parentKmlObject);
+							
+							// search children
+							var findChild = function(nextParent) {
+								var onChild = function(child) {
+									
+								};
+								var onComplete = function() {
+									
+								};
+								var onError = function() {
+									
+								};
+								nextParent.iterateChildren(onChild, onComplete, onError);
+							};
+							
+							
 							if (kmlObjectType) {
-								var childKmlObjectList = parentKmlObject.getElementsByType(kmlObjectType);
+								childKmlObjectList = parentKmlObject.getElementsByType(kmlObjectType);
 								// var childKmlObjectList = parentKmlObject.getFeatures().getChildNodes();
-								for (var i = 0; i < childKmlObjectList.getLength(); i++) {
-									var childKmlObject = childKmlObjectList.item(i);
-									var childGeoDataId = this.kmlObjectCreator.getGeoDataId(childKmlObject);
+								for (i = 0; i < childKmlObjectList.getLength(); i++) {
+									childKmlObject = childKmlObjectList.item(i);
+									childGeoDataId = this.kmlObjectCreator.getGeoDataId(childKmlObject);
 									if (childGeoDataId === id) {
 										return childKmlObject;
 									}
@@ -141,25 +163,30 @@ if (!window.core.gearth)
 		 *   callback - Function. Invoked upon successful KmlObject retrieval.
 		 */
 		getOrCreateKmlObject: function(geoData, callback) {
+			console.log("getOrCreateKmlObject(" + geoData + ", " + callback + ")");
 			if (geoData && geoData.id) {
 				var kmlObject = this.getKmlObject(geoData);
 				if (kmlObject) {
+					console.log("Already exists");
 					// use the KmlObject from the store
 					callback.call(callback, kmlObject);
 				}
 				else {
 					// create a new KmlObject
+					var _this = this;
 					var id = geoData.id;
 					this.kmlObjectCreator.createFromGeoData.call(
 							this.kmlObjectCreator, 
 							geoData, 
-							$.proxy(function(kmlObject) {
-								this.datastore[id] = kmlObject;
+							function(kmlObject) {
+								_this.datastore[id] = kmlObject;
+								console.log("Created KmlObject " + kmlObject + " for ID " + id);
 								callback.call(callback, kmlObject);
-							}, this));
+							});
 				}
 			}
 			else {
+				console.log("Invalid geodata: " + geoData + ", " + geoData.id);
 				// invalid GeoData provided
 				callback.call(callback, null);
 			}
