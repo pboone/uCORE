@@ -639,7 +639,6 @@ def map_view(request):
     # as long as the login_user view forces them to register if they don't already
     # exist in the db, then we should never actually get here. Still, better safe than sorry.
     return render_to_response('login.html', context_instance=RequestContext(request))
-
   return render_to_response('map.html', {'user': user}, context_instance=RequestContext(request))
 
 @require_http_methods(['GET'])
