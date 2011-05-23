@@ -9,20 +9,25 @@ html,body,div,span,applet,object,iframe,h1,h2,h3,h4,h5,h6,p,blockquote,pre,a,abb
 
 /*The user welcome message in the page header!*/
 #user-info {
-  position:relative;
-  /* position:absolute; */
+  position:relative; 
   float:right;
   padding-right: 5px;
   padding-top:5px;
-  display:block;
+  display:block; 
 }
+
 #core-logo {
   margin: 3px 3px 3px 3px;
+  float: left;
 }
 #geheader {
-  background-color: /*#176b b4*/ /*#D9E7F8*/ #1E3A7C;
+  background-color: #1E3A7C;
+   /* #176b b4  #D9e7F8 */
   padding:0px;
+  display: block;
+  position: relative;
   margin:0px;
+  overflow: auto;
 }
 
 #gefooter {
